@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"encoding/json"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -71,7 +73,16 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "1")
 			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = w.Write([]byte(`{"error":"rate limit exceeded","code":429}`))
+			resp := struct {
+				Error string `json:"error"`
+				Code  int    `json:"code"`
+			}{
+				Error: "rate limit exceeded",
+				Code:  http.StatusTooManyRequests,
+			}
+			if err := json.NewEncoder(w).Encode(resp); err != nil {
+				log.Printf("error encoding rate limit response: %v", err)
+			}
 			return
 		}
 

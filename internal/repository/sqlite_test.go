@@ -21,12 +21,17 @@ func setupTestDB(t *testing.T) *SQLite {
 		t.Fatalf("migrate: %v", err)
 	}
 
+	t.Cleanup(func() {
+		if err := repo.Close(); err != nil {
+			t.Errorf("close repo: %v", err)
+		}
+	})
+
 	return repo
 }
 
 func TestSQLite_Create(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	url, err := repo.Create("https://example.com")
 	if err != nil {
@@ -52,7 +57,6 @@ func TestSQLite_Create(t *testing.T) {
 
 func TestSQLite_GetByCode(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	created, err := repo.Create("https://example.com")
 	if err != nil {
@@ -74,7 +78,6 @@ func TestSQLite_GetByCode(t *testing.T) {
 
 func TestSQLite_GetByCode_NotFound(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	_, err := repo.GetByCode("nonexistent")
 	if err != ErrNotFound {
@@ -84,7 +87,6 @@ func TestSQLite_GetByCode_NotFound(t *testing.T) {
 
 func TestSQLite_GetByOriginal(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	created, err := repo.Create("https://example.com")
 	if err != nil {
@@ -103,7 +105,6 @@ func TestSQLite_GetByOriginal(t *testing.T) {
 
 func TestSQLite_IncrementClicks(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	created, err := repo.Create("https://example.com")
 	if err != nil {
@@ -128,7 +129,6 @@ func TestSQLite_IncrementClicks(t *testing.T) {
 
 func TestSQLite_IncrementClicks_NotFound(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	err := repo.IncrementClicks("nonexistent")
 	if err != ErrNotFound {
@@ -138,7 +138,6 @@ func TestSQLite_IncrementClicks_NotFound(t *testing.T) {
 
 func TestSQLite_GlobalStats(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	for i := 0; i < 3; i++ {
 		url, err := repo.Create("https://example.com/" + string(rune('a'+i)))
@@ -170,7 +169,6 @@ func TestSQLite_GlobalStats(t *testing.T) {
 
 func TestSQLite_MultipleURLs(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	urls := []string{
 		"https://example.com",
@@ -209,7 +207,6 @@ func TestSQLite_MultipleURLs(t *testing.T) {
 
 func TestSQLite_ConcurrentIncrements(t *testing.T) {
 	repo := setupTestDB(t)
-	defer func() { _ = repo.Close() }()
 
 	created, err := repo.Create("https://example.com")
 	if err != nil {

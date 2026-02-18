@@ -4,6 +4,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 
@@ -11,11 +12,15 @@ import (
 	"github.com/devaloi/shrink/internal/repository"
 )
 
+// MaxURLLength is the maximum allowed length for a URL.
+const MaxURLLength = 2048
+
 // Common errors returned by the service.
 var (
 	ErrInvalidURL    = errors.New("invalid URL")
 	ErrEmptyURL      = errors.New("URL cannot be empty")
 	ErrMissingScheme = errors.New("URL must have http or https scheme")
+	ErrURLTooLong    = errors.New("URL exceeds maximum length")
 	ErrNotFound      = repository.ErrNotFound
 )
 
@@ -74,7 +79,9 @@ func (s *URLService) Resolve(code string) (string, error) {
 	}
 
 	go func() {
-		_ = s.repo.IncrementClicks(code)
+		if err := s.repo.IncrementClicks(code); err != nil {
+			log.Printf("error incrementing clicks for %s: %v", code, err)
+		}
 	}()
 
 	return urlRecord.Original, nil
@@ -107,6 +114,10 @@ func (s *URLService) GlobalStats() (*domain.GlobalStats, error) {
 func (s *URLService) validateURL(rawURL string) error {
 	if rawURL == "" {
 		return ErrEmptyURL
+	}
+
+	if len(rawURL) > MaxURLLength {
+		return fmt.Errorf("%w: %d characters (max %d)", ErrURLTooLong, len(rawURL), MaxURLLength)
 	}
 
 	parsed, err := url.Parse(rawURL)

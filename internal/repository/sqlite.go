@@ -64,52 +64,34 @@ func (r *SQLite) Create(original string) (*domain.URL, error) {
 	return r.GetByID(id)
 }
 
-// GetByID retrieves a URL by its database ID.
-func (r *SQLite) GetByID(id int64) (*domain.URL, error) {
+// getURL executes a query that returns a single URL row.
+func (r *SQLite) getURL(query string, arg any) (*domain.URL, error) {
 	url := &domain.URL{}
-	err := r.db.QueryRow(
-		"SELECT id, code, original, clicks, created_at FROM urls WHERE id = ?",
-		id,
-	).Scan(&url.ID, &url.Code, &url.Original, &url.Clicks, &url.CreatedAt)
+	err := r.db.QueryRow(query, arg).Scan(
+		&url.ID, &url.Code, &url.Original, &url.Clicks, &url.CreatedAt,
+	)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get url by id: %w", err)
+		return nil, err
 	}
 	return url, nil
+}
+
+// GetByID retrieves a URL by its database ID.
+func (r *SQLite) GetByID(id int64) (*domain.URL, error) {
+	return r.getURL("SELECT id, code, original, clicks, created_at FROM urls WHERE id = ?", id)
 }
 
 // GetByCode retrieves a URL by its short code.
 func (r *SQLite) GetByCode(code string) (*domain.URL, error) {
-	url := &domain.URL{}
-	err := r.db.QueryRow(
-		"SELECT id, code, original, clicks, created_at FROM urls WHERE code = ?",
-		code,
-	).Scan(&url.ID, &url.Code, &url.Original, &url.Clicks, &url.CreatedAt)
-	if err == sql.ErrNoRows {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get url by code: %w", err)
-	}
-	return url, nil
+	return r.getURL("SELECT id, code, original, clicks, created_at FROM urls WHERE code = ?", code)
 }
 
 // GetByOriginal retrieves a URL by its original URL if it exists.
 func (r *SQLite) GetByOriginal(original string) (*domain.URL, error) {
-	url := &domain.URL{}
-	err := r.db.QueryRow(
-		"SELECT id, code, original, clicks, created_at FROM urls WHERE original = ?",
-		original,
-	).Scan(&url.ID, &url.Code, &url.Original, &url.Clicks, &url.CreatedAt)
-	if err == sql.ErrNoRows {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get url by original: %w", err)
-	}
-	return url, nil
+	return r.getURL("SELECT id, code, original, clicks, created_at FROM urls WHERE original = ?", original)
 }
 
 // IncrementClicks increases the click count for a URL by 1.

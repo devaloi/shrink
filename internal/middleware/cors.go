@@ -14,13 +14,16 @@ type CORSConfig struct {
 	MaxAge         int
 }
 
+// CORSMaxAge is the default max-age for CORS preflight responses (1 day in seconds).
+const CORSMaxAge = 86400
+
 // DefaultCORSConfig returns sensible CORS defaults.
 func DefaultCORSConfig() CORSConfig {
 	return CORSConfig{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "X-Request-ID"},
-		MaxAge:         86400,
+		MaxAge:         CORSMaxAge,
 	}
 }
 

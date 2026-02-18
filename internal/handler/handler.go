@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/devaloi/shrink/internal/domain"
@@ -12,16 +12,21 @@ import (
 	"github.com/devaloi/shrink/internal/service"
 )
 
+// maxRequestBodySize limits the size of incoming request bodies (1 MB).
+const maxRequestBodySize = 1 << 20
+
 // Handler handles HTTP requests for the URL shortener.
 type Handler struct {
 	svc       *service.URLService
+	db        *sql.DB
 	startTime time.Time
 }
 
-// New creates a new Handler with the given service.
-func New(svc *service.URLService) *Handler {
+// New creates a new Handler with the given service and database connection.
+func New(svc *service.URLService, db *sql.DB) *Handler {
 	return &Handler{
 		svc:       svc,
+		db:        db,
 		startTime: time.Now(),
 	}
 }
@@ -34,6 +39,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req domain.CreateRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
@@ -44,6 +50,8 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, service.ErrEmptyURL):
 			writeError(w, http.StatusBadRequest, "url is required")
+		case errors.Is(err, service.ErrURLTooLong):
+			writeError(w, http.StatusBadRequest, "url exceeds maximum length")
 		case errors.Is(err, service.ErrMissingScheme):
 			writeError(w, http.StatusBadRequest, "url must have http or https scheme")
 		case errors.Is(err, service.ErrInvalidURL):
@@ -59,7 +67,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 // Redirect handles GET /{code}
 func (h *Handler) Redirect(w http.ResponseWriter, r *http.Request) {
-	code := strings.TrimPrefix(r.URL.Path, "/")
+	code := r.PathValue("code")
 	if code == "" {
 		writeError(w, http.StatusBadRequest, "code is required")
 		return
@@ -80,7 +88,7 @@ func (h *Handler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 // GetStats handles GET /api/urls/{code}
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
-	code := strings.TrimPrefix(r.URL.Path, "/api/urls/")
+	code := r.PathValue("code")
 	if code == "" {
 		writeError(w, http.StatusBadRequest, "code is required")
 		return
@@ -112,9 +120,13 @@ func (h *Handler) GlobalStats(w http.ResponseWriter, r *http.Request) {
 
 // HealthCheck handles GET /api/health
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	status := "ok"
+	if err := h.db.Ping(); err != nil {
+		status = "degraded"
+	}
 	uptime := time.Since(h.startTime).Round(time.Second)
 	writeJSON(w, http.StatusOK, domain.HealthResponse{
-		Status: "ok",
+		Status: status,
 		Uptime: uptime.String(),
 	})
 }

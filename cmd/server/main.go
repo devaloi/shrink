@@ -19,6 +19,14 @@ import (
 	"github.com/devaloi/shrink/internal/service"
 )
 
+// Server timeout constants.
+const (
+	ReadTimeout     = 15 * time.Second
+	WriteTimeout    = 15 * time.Second
+	IdleTimeout     = 60 * time.Second
+	ShutdownTimeout = 10 * time.Second
+)
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatalf("server error: %v", err)
@@ -57,7 +65,7 @@ func run() error {
 	}
 
 	svc := service.NewURLService(repo, cfg.BaseURL)
-	h := handler.New(svc)
+	h := handler.New(svc, db)
 
 	rateLimiter := middleware.NewRateLimiter(cfg.RateLimit, cfg.RateBurst)
 
@@ -80,9 +88,9 @@ func run() error {
 	srv := &http.Server{
 		Addr:         cfg.Addr(),
 		Handler:      chain(mux),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  ReadTimeout,
+		WriteTimeout: WriteTimeout,
+		IdleTimeout:  IdleTimeout,
 	}
 
 	go func() {
@@ -98,7 +106,7 @@ func run() error {
 
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

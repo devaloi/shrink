@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -127,6 +128,7 @@ func TestURLService_Shorten_InvalidURL(t *testing.T) {
 		{"no scheme", "example.com", ErrMissingScheme},
 		{"ftp scheme", "ftp://example.com", ErrMissingScheme},
 		{"no host", "http://", ErrInvalidURL},
+		{"too long", "https://example.com/" + strings.Repeat("a", MaxURLLength), ErrURLTooLong},
 	}
 
 	for _, tt := range tests {

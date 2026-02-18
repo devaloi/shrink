@@ -31,10 +31,12 @@ func setupTestHandler(t *testing.T) (*Handler, func()) {
 	}
 
 	svc := service.NewURLService(repo, "http://localhost:8080")
-	h := New(svc)
+	h := New(svc, db)
 
 	cleanup := func() {
-		_ = db.Close()
+		if err := db.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
 	}
 
 	return h, cleanup
@@ -145,6 +147,7 @@ func TestHandler_Redirect(t *testing.T) {
 	}
 
 	redirectReq := httptest.NewRequest(http.MethodGet, "/"+createResp.Code, nil)
+	redirectReq.SetPathValue("code", createResp.Code)
 	redirectW := httptest.NewRecorder()
 	h.Redirect(redirectW, redirectReq)
 
@@ -163,6 +166,7 @@ func TestHandler_Redirect_NotFound(t *testing.T) {
 	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
+	req.SetPathValue("code", "nonexistent")
 	w := httptest.NewRecorder()
 
 	h.Redirect(w, req)
@@ -188,6 +192,7 @@ func TestHandler_GetStats(t *testing.T) {
 	}
 
 	statsReq := httptest.NewRequest(http.MethodGet, "/api/urls/"+createResp.Code, nil)
+	statsReq.SetPathValue("code", createResp.Code)
 	statsW := httptest.NewRecorder()
 	h.GetStats(statsW, statsReq)
 
@@ -213,6 +218,7 @@ func TestHandler_GetStats_NotFound(t *testing.T) {
 	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/urls/nonexistent", nil)
+	req.SetPathValue("code", "nonexistent")
 	w := httptest.NewRecorder()
 
 	h.GetStats(w, req)
@@ -295,6 +301,7 @@ func TestHandler_FullFlow(t *testing.T) {
 	}
 
 	redirectReq := httptest.NewRequest(http.MethodGet, "/"+createResp.Code, nil)
+	redirectReq.SetPathValue("code", createResp.Code)
 	redirectW := httptest.NewRecorder()
 	h.Redirect(redirectW, redirectReq)
 
@@ -305,6 +312,7 @@ func TestHandler_FullFlow(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	statsReq := httptest.NewRequest(http.MethodGet, "/api/urls/"+createResp.Code, nil)
+	statsReq.SetPathValue("code", createResp.Code)
 	statsW := httptest.NewRecorder()
 	h.GetStats(statsW, statsReq)
 
