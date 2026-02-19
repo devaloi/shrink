@@ -1,6 +1,7 @@
 # shrink
 
-[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![CI](https://github.com/devaloi/shrink/actions/workflows/ci.yml/badge.svg)](https://github.com/devaloi/shrink/actions/workflows/ci.yml)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A clean, production-grade URL shortener API built with Go, SQLite, and middleware-driven architecture.
